@@ -9,6 +9,7 @@ pytest = "*"
 flake8 = "*"
 ytmusicapi = "*"
 yt-dlp = "*"
+tqdm = "*"
 
 [dev-packages]
 

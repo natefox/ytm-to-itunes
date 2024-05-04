@@ -1,10 +1,11 @@
 import subprocess
 import os
 from ytmusicapi import YTMusic
-
 import yt_dlp
-import os
-import os
+import config
+import time
+from tqdm import tqdm
+
 ytmusic = YTMusic("oauth.json")
 
 
@@ -17,9 +18,6 @@ def add_to_itunes(playlist_name, file_path):
         file_path (str): The path to the file to add to the playlist.
     """
 
-    # Get the playlist ID
-    # playlist_id = get_playlist_id(playlist_name)
-
     script = f"""
 tell application "Music"
     set filePath to "{file_path}"
@@ -27,8 +25,6 @@ tell application "Music"
     add fileAlias to playlist "{playlist_name}"
 end tell
 """
-
-    # Add the file to the playlist
     subprocess.call(["osascript", "-e", script])
 
 
@@ -42,12 +38,67 @@ def get_playlist_id(playlist_name):
     Returns:
         str: The playlist ID.
     """
-
-    # Get the playlist ID
+    script = f"tell application \"Music\"\nget id of playlist \"{
+        playlist_name}\"\nend tell"
     playlist_id = subprocess.check_output(
-        ["osascript", "-e", f"tell application \"Music\"\nget id of playlist \"{playlist_name}\"\nend tell"]).decode("utf-8").strip()
-
+        ["osascript", "-e", script]).decode("utf-8").strip()
     return playlist_id
+
+
+def download_track(ydl, download_url):
+    """
+    returns: absolute path of downloaded track
+    """
+    info = ydl.extract_info(download_url, download=False)
+
+    # Download the video
+    ydl.download([download_url])
+
+    # Get the file path
+    filepath_local = ydl.prepare_filename(info)
+    filepath_local = filepath_local.replace(".webm", ".m4a")
+    # Get the absolute path of the file
+    return os.path.abspath(filepath_local)
+
+
+def download_yt_song(track, download_url, ytm_pl_id, f, f2, actually_download_flag=True):
+    ydl_opts = {'extract_flat': 'discard_in_playlist',
+                'final_ext': 'm4a',
+                'format': 'bestaudio/best',
+                'fragment_retries': 10,
+                'ignoreerrors': True,
+                'outtmpl': f'./result/{ytm_pl_id}/%(title)s.%(ext)s',
+                'postprocessors': [{'key': 'FFmpegExtractAudio',
+                                    'nopostoverwrites': False,
+                                    'preferredcodec': 'm4a',
+                                    'preferredquality': '5'},
+                                   {'add_chapters': True,
+                                    'add_infojson': 'if_exists',
+                                    'add_metadata': True,
+                                    'key': 'FFmpegMetadata'},
+                                   {'key': 'FFmpegConcat',
+                                    'only_multi_video': True,
+                                    'when': 'playlist'}],
+                'retries': 10}
+
+    try:
+        if actually_download_flag:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                file_path2 = download_track(ydl, download_url)
+                add_to_itunes(ytm_pl_name, file_path2)
+
+            # add newlines for clarity
+            print()
+            print()
+
+        # write to file the id of the video just downloaded
+        f.write(track['videoId'] + '\n')
+    except Exception:
+        # AttributeError: 'NoneType' object has no attribute 'setdefault'
+        # ERROR: [youtube] _2I7utmtm0Q: Video unavailable. The uploader has not made this video available in your country
+        # TODO FileNotFoundError: [Errno 2] No such file or directory: './result/PLjuQ2jeykzJUTv3j59UegOAp6kHXfeZyk/!errored.txt'
+
+        f2.write(track['videoId'] + '\n')
 
 
 def create_itunes_playlist(playlist_name):
@@ -57,121 +108,79 @@ def create_itunes_playlist(playlist_name):
     Args:
         playlist_name (str): The name of the playlist to create.
     """
-
-    # Create the playlist
-
-    applescript = f"""
+    script = f"""
 tell application "Music"
     make new user playlist with properties {{name:"{playlist_name}"}}
 end tell
 """
-
-    # process = subprocess.Popen(
-    #     ['osascript', '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    # stdout, stderr = process.communicate(applescript.encode())
     subprocess.call(
-        ["osascript", "-e", applescript])
+        ["osascript", "-e", script])
 
 
 if __name__ == "__main__":
-    # playlist_name = 'My Playlist'
-    # file_path = 'path/to/file.mp3'
+    # Add the file to the playlist
+    # playlist[0] is Liked Tracks
+    for idx, playlist in tqdm(enumerate(ytmusic.get_library_playlists()[0:])):
+        ytm_pl_name = playlist['title']
+        ytm_pl_id = playlist['playlistId']
+        print(f'Doing playlist with name: {ytm_pl_name}')
 
-    # Add the file to the playlistor
-
-    # add any new playlist that has not been added yet
-    plsts = (ytmusic.get_library_playlists())
-    for pl in plsts[1:2]:
-        ytm_pl_name = pl['title']
-        ytm_pl_id = pl['playlistId']
-        print(ytm_pl_name, ":::::::")
         try:
-            xx = get_playlist_id(ytm_pl_name)
+            # check if the playlist exists
+            apl_pl_id = get_playlist_id(ytm_pl_name)
         except subprocess.CalledProcessError:
+            # if it doesn't exist, the applescirpt retuns an error
+            # subprocess.CalledProcessError
+            # then, create the playlist and still get it's id
             create_itunes_playlist(ytm_pl_name)
-            xx = get_playlist_id(ytm_pl_name)
-            # xx = 'created!!'
-        print(xx, 'asljhfdaslkf')
+
+            # Wait for 1 second
+            time.sleep(1)
+
+            apl_pl_id = get_playlist_id(ytm_pl_name)
 
         # TODO for every playlist add their songs
         # https://ytmusicapi.readthedocs.io/en/stable/reference.html#ytmusicapi.YTMusic.get_library_playlists
-        res = ytmusic.get_playlist(ytm_pl_id)
-        print('working with playlist ', ytm_pl_name, ' yt id: ', ytm_pl_id)
-        # print(res['tracks'])
-        for x in res["tracks"][:]:
-            dir2 = f'./result/{ytm_pl_id}'
-            if not os.path.exists(dir2):
-                os.mkdir(dir2)
+        ytm_pl_current = ytmusic.get_playlist(ytm_pl_id, limit=None)
 
-            # os.makedirs()
+        pl_dir_path = f'./result/{ytm_pl_id}'
+        if not os.path.exists(pl_dir_path):
+            os.mkdir(pl_dir_path)
+        dl_path = f'{pl_dir_path}/downloaded.txt'
+        if os.path.exists(dl_path):
+            pass
+        else:
+            with open(dl_path, "w") as f:
+                pass
 
-            with open(f'./result/{ytm_pl_id}/!downloaded.txt', 'r+', encoding='utf-8') as f:
-                already_downloaded = False
-                for l in f:
-                    if x['videoId'] in l:
+        if idx == 0:
+            tracks = ytmusic.get_liked_songs(limit=None)["tracks"]
+        else:
+            tracks = ytm_pl_current["tracks"]
+        # TODO error doesnt read this
+
+        # https://stackoverflow.com/questions/56381066/how-to-open-a-file-in-both-read-and-append-mode-at-the-same-time-in-one-variable
+        # position in f is at beginning
+        with open(dl_path, 'r+', encoding='utf-8') as f:
+
+            with open(f'{pl_dir_path}/errored.txt', 'a+',
+                      encoding='utf-8') as f2:
+                all_text = f.read()
+                for track in tqdm(tracks):
+                    already_downloaded = False
+                    if not track['videoId']:
+                        # skip if empty track videoId
+                        # TODO logging
+                        # TODO cron
+                        # TODO windows port
+                        continue
+
+                    if track['videoId'] in all_text:
                         already_downloaded = True
-                        break
+                        # break
 
-                if not already_downloaded:
-                    # URL of the video you want to download
-                    URL = f'https://www.youtube.com/watch?v={x["videoId"]}'
-
-                    # Options for yt-dlp
-                    ydl_opts2 = {'extract_flat': 'discard_in_playlist',
-                                 'final_ext': 'm4a',
-                                 'format': 'bestaudio/best',
-                                 'fragment_retries': 10,
-                                 'ignoreerrors': True,
-                                 'outtmpl': f'./result/{ytm_pl_id}/%(title)s.%(ext)s',
-                                 'postprocessors': [{'key': 'FFmpegExtractAudio',
-                                                     'nopostoverwrites': False,
-                                                     'preferredcodec': 'm4a',
-                                                     'preferredquality': '5'},
-                                                    {'add_chapters': True,
-                                                     'add_infojson': 'if_exists',
-                                                     'add_metadata': True,
-                                                     'key': 'FFmpegMetadata'},
-                                                    {'key': 'FFmpegConcat',
-                                                     'only_multi_video': True,
-                                                     'when': 'playlist'}],
-                                 'retries': 10}
-
-                    ydl_opts = {
-                        'format': 'm4a/bestaudio/best',  # Choose the best quality format
-                        'postprocessors': [{
-                            'key': 'FFmpegExtractAudio',  # Extract audio using ffmpeg
-                            'preferredcodec': 'm4a',
-                        }],
-                        'outtmpl': f'./result/{ytm_pl_id}/%(title)s.%(ext)s',
-                        'overwrites': True,
-                    }
-
-                    # Download the video
-                    try:
-                        with yt_dlp.YoutubeDL(ydl_opts2) as ydl:
-                            # info = ydl.download(URL)
-                            # Extract information
-                            info = ydl.extract_info(URL, download=False)
-                            fppp_local = ydl.prepare_filename(
-                                info)  # Get the file path
-                            ydl.download([URL])  # Download the video
-                            fppp_local = fppp_local.replace(".webm", ".m4a")
-                            # Get the absolute path of the file
-                            file_path2 = os.path.abspath(fppp_local)
-
-                            add_to_itunes(ytm_pl_name, file_path2)
-                            # add_to_itunes(ytm_pl_name, file_path)
-                            # add_to_itunes(ytm_pl_name, file_path)
-                            # Delete the file at file_path
-                        print()
-
-                        # write to file the id of the video just downloaded
-                        f.write(x['videoId'] + '\n')
-                    except Exception:
-                        # AttributeError: 'NoneType' object has no attribute 'setdefault'
-                        # ERROR: [youtube] _2I7utmtm0Q: Video unavailable. The uploader has not made this video available in your country
-                        with open(f'./result/{ytm_pl_id}/!errored.txt', 'r+', encoding='utf-8') as f2:
-                            f2.write(x['videoId'] + '\n')
-
-                        pass
-    # add_to_itunes(playlist_name, file_path)
+                    if not already_downloaded:
+                        download_url = f'https://www.youtube.com/watch?v={
+                            track["videoId"]}'
+                        download_yt_song(
+                            track, download_url, ytm_pl_id, f, f2, actually_download_flag=True)

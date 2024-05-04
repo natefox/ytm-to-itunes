@@ -3,6 +3,9 @@ why? because https://soundiiz.com/webapp/scheduled/2072450 is paid
 so are all other https://alternativeto.net/software/soundiiz/
 "freemium"
 
+
+runs on macos
+
 ---
 
 
@@ -27,3 +30,4 @@ run with `python main.py`
 
 
 TODO cron
+
