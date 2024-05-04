@@ -26,7 +26,6 @@ in iTunes.
 
 import subprocess
 import os
-import time
 from tqdm import tqdm  # type: ignore
 
 # https://ytmusicapi.readthedocs.io/en/stable/reference.html#ytmusicapi.YTMusic.get_library_playlists
@@ -37,6 +36,16 @@ ytmusic = YTMusic("oauth.json")
 
 
 def scpt_add_file_to_plst(file_path, playlist_name):
+    """
+    Adds a file to a playlist in the Music application.
+
+    Args:
+        file_path (str): The path of the file to be added.
+        playlist_name (str): The name of the playlist to add the file to.
+
+    Returns:
+        str: An AppleScript command to add the file to the playlist.
+    """
     return f"""
 tell application "Music"
     set filePath to "{file_path}"
@@ -60,8 +69,18 @@ def itunes_add(playlist_name, file_path):
 
 
 def scpt_get_plst_id(playlist_name):
-    return f"""tell application \"Music\"
-get id of playlist \"{playlist_name}\"
+    """
+    Returns an AppleScript command to get the ID of a playlist in the
+    Music app.
+
+    Parameters:
+    - playlist_name (str): The name of the playlist.
+
+    Returns:
+    - str: An AppleScript command to get the ID of the specified playlist.
+    """
+    return f"""tell application "Music"
+get id of playlist "{playlist_name}"
 end tell"""
 
 
@@ -87,6 +106,16 @@ def itunes_get_plst_id(playlist_name):
 
 
 def scpt_new_plst(playlist_name):
+    """
+    Create a new user playlist in the Music application with the given name.
+
+    Parameters:
+    - playlist_name (str): The name of the playlist to create.
+
+    Returns:
+    - str: An AppleScript string that creates a new user playlist
+    swith the specified name.
+    """
     return f"""
 tell application "Music"
     make new user playlist with properties {{name:"{playlist_name}"}}
@@ -105,6 +134,16 @@ def itunes_new_plst(playlist_name):
 
 
 def ytdlp_gen_config(dl_path):
+    """
+    Generate the configuration dictionary for youtube-dl.
+
+    Args:
+        dl_path (str): The path where the downloaded files will be saved.
+
+    Returns:
+        dict: The configuration dictionary for youtube-dl.
+
+    """
     return {
         "extract_flat": "discard_in_playlist",
         "final_ext": "m4a",
@@ -136,6 +175,15 @@ def ytdlp_gen_config(dl_path):
 
 
 def create_dir_if_not_exist(path):
+    """
+    Create a directory if it doesn't already exist.
+
+    Args:
+        path (str): The path of the directory to be created.
+
+    Returns:
+        None
+    """
     # TODO path type check
     if not os.path.exists(path):
         # if playlist directory doesn't exist, create it
@@ -143,6 +191,15 @@ def create_dir_if_not_exist(path):
 
 
 def create_file_if_not_exist(path):
+    """
+    Create a file at the specified path if it doesn't already exist.
+
+    Args:
+        path (str): The path of the file to be created.
+
+    Returns:
+        None
+    """
     # TODO path type check
     if os.path.exists(path):
         pass
@@ -153,7 +210,15 @@ def create_file_if_not_exist(path):
 
 def ytm_dl_song(url, ydl_opts):
     """
-    returns: absolute path of downloaded track
+    Downloads a song from YouTube Music and returns the absolute path
+    sof the downloaded track.
+
+    Args:
+        url (str): The URL of the YouTube Music song.
+        ydl_opts (dict): The options to be passed to the YoutubeDL instance.
+
+    Returns:
+        str: The absolute path of the downloaded track.
     """
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
@@ -166,7 +231,12 @@ def ytm_dl_song(url, ydl_opts):
         return os.path.abspath(filepath_local)
 
 
-if __name__ == "__main__":
+def main():
+    """
+    Main function that performs the conversion of YouTube Music playlists
+    to iTunes playlists.
+    """
+
     ytm_all_plsts = ytmusic.get_library_playlists()
     for plst in tqdm(ytm_all_plsts):
         ytm_plst_name = plst["title"]
@@ -179,17 +249,12 @@ if __name__ == "__main__":
 
         try:
             # check if the playlist exists in apple music
-            apl_pl_id = itunes_get_plst_id(ytm_plst_name)
+            itunes_get_plst_id(ytm_plst_name)
         except subprocess.CalledProcessError:
             # if it doesn't exist, the applescirpt retuns an error
             # subprocess.CalledProcessError
             # then, create the playlist and still get it's id
             itunes_new_plst(ytm_plst_name)
-
-            # Wait for 1 second
-            time.sleep(1)
-
-            apl_pl_id = itunes_get_plst_id(ytm_plst_name)
 
         pl_dir_path = f"./result/{ytm_plst_id}"
         create_dir_if_not_exist(pl_dir_path)
@@ -238,3 +303,7 @@ if __name__ == "__main__":
                         # in your country
                         if track["videoId"] not in err_text:
                             ef.write(track["videoId"] + "\n")
+
+
+if __name__ == "__main__":
+    main()
