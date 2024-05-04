@@ -29,7 +29,7 @@ I want to listen and discover songs on Youtube Music, and periodically sync any 
 
 ## Prerequisites:
 
-1. `python 3.12.1` or any of your liking
+1. [`python 3.12.1`](https://github.com/prawwtocol/ytm-to-itunes/blob/main/Pipfile#L18) or any of your liking
 2. MacOS with applescript support
 3. `pipenv` python package
 
