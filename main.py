@@ -57,10 +57,14 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 
-ytmusic = YTMusic("oauth.json")
+oauth_path = input("Please enter the path to your oauth.json file: ")
+if not os.path.isfile(oauth_path):
+    print("File does not exist. Please try again.")
+else:
+    ytmusic = YTMusic(oauth_path)
+    # ytmusic = YTMusic("oauth.json")
 
 
-# TODO package
 # TODO add badges
 
 
