@@ -4,6 +4,10 @@
 Script for MacOS that downloads and adds newly added Youtube Music songs to iTunes.
 
 
+
+Proud ![GitHub Issues or Pull Requests](https://img.shields.io/github/issues-raw/prawwtocol/ytm-to-itunes) enjoyer;     ![GitHub License](https://img.shields.io/github/license/prawwtocol/ytm-to-itunes)
+
+
 <img src="https://www.pngall.com/wp-content/uploads/4/MacOS-PNG-Clipart.png" height="40px" /> : <img src="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse3.mm.bing.net%2Fth%3Fid%3DOIP._N-T1X-ZVBFMrcY7RUYcBwHaHa%26pid%3DApi&f=1&ipt=47590b5edde2fb01b0d551d8b8c125724509e19f032a0b521a2a15268fce712a&ipo=images" height="40px" /> ➡️ <img src="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fwww.pngarts.com%2Ffiles%2F8%2FApple-Music-Logo-PNG-Photo.png&f=1&nofb=1&ipt=9b2025a02ec0b35cf0a14817f52add29ee4985302def60d30f667fb015b5d05d&ipo=images" alt="Apple Music Logo PNG Photo | PNG Arts" height="40px" />
 
 
