@@ -22,12 +22,39 @@ from tqdm import tqdm  # type: ignore
 from ytmusicapi import YTMusic  # type: ignore
 import yt_dlp  # type: ignore
 from util import create_dir_if_not_exist, create_file_if_not_exist
+import datetime
 
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
+logging_level = logging.DEBUG
+
+logging.basicConfig(level=logging_level)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging_level)
+# in order to not get 2 log messages:
+# Set the logger to not propagate messages:
+# logger.propagate = False.
+# This will prevent the logger from sending messages up to the root logger
+logger.propagate = False
+
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
+# Create a file handler
+log_file = (
+    "log" + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + ".log"
+)
+handler = logging.FileHandler(log_file)
+handler.setLevel(logging_level)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+# Create a console handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging_level)
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
 
 
 ytmusic = YTMusic("oauth.json")
