@@ -1,11 +1,12 @@
 oauth.json
-# /result/**/*
+
 /result/**/*
 !/result/**/
 !/result/**/*.txt
 # The first line tells Git to ignore all files in the result directory and all its subdirectories. However, the second line’s pattern is not able to “re-include” the .txt files. This is because Git’s pattern matching in .gitignore does not “look inside” or “traverse” directories that have already been excluded^1^.
-
 # In other words, once a directory is ignored, Git doesn’t process any of its files to check for exceptions. So, if you ignore a directory (or all directories using **/*), you can’t then re-include specific files inside it^1^.
 
 # !/result//downloaded.txt
 __pycache__
+
+*.scpt
