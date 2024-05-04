@@ -30,18 +30,18 @@ I want to listen and discover songs on Youtube Music, and periodically sync any 
 ## Prerequisites:
 
 1. [`python 3.12.1`](https://github.com/prawwtocol/ytm-to-itunes/blob/main/Pipfile#L18) or any of your liking
-2. MacOS with applescript support
-3. `pipenv` python package
+2. <img src="https://www.pngall.com/wp-content/uploads/4/MacOS-PNG-Clipart.png" height="40px" /> MacOS with applescript support
+3. [`pipenv`](https://pipenv.pypa.io/en/latest/) python package
 
 ## Running:
 
 
-1. `git clone`
-2. `cd`
+1. `git clone https://github.com/prawwtocol/ytm-to-itunes.git`
+2. `cd ytm-to-itunes`
 1. `pipenv install`
 4. `ytmusicapi oauth`
     - Authenticate with Youtube Music, then return to Terminal and press [ENTER]
-5. Run with `python main.py` whenever you need to
+5. Run with `python main.py` when you need to sync
 
 
 
