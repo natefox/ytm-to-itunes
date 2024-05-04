@@ -7,17 +7,6 @@ information. The `yt_dlp` library is used to download the audio from YouTube
 videos. The downloaded songs are then added to iTunes playlists using
 AppleScript commands executed via the `subprocess` module.
 
-Functions:
-- `add_to_itunes(playlist_name, file_path)`: Adds a file to an iTunes playlist.
-- `get_playlist_id(playlist_name)`: Gets the playlist ID for a given playlist
-name.
-- `download_track(ydl, download_url)`: Downloads a track from YouTube.
-- `download_yt_song(track, download_url, ytm_pl_id, f, f2,
-actually_download_flag=True)`: Downloads a song from YouTube
-and adds it to an iTunes playlist.
-- `create_itunes_playlist(playlist_name)`: Creates a playlist in iTunes
-with the given name.
-
 This script is intended to be run as a standalone program. When run, it
 iterates over all playlists in the user's YouTube Music library, downloads
 all songs in those playlists, and adds them to corresponding playlists
@@ -31,6 +20,7 @@ from tqdm import tqdm  # type: ignore
 # https://ytmusicapi.readthedocs.io/en/stable/reference.html#ytmusicapi.YTMusic.get_library_playlists
 from ytmusicapi import YTMusic  # type: ignore
 import yt_dlp  # type: ignore
+from util import create_dir_if_not_exist, create_file_if_not_exist
 
 ytmusic = YTMusic("oauth.json")
 
@@ -144,6 +134,12 @@ def ytdlp_gen_config(dl_path):
         dict: The configuration dictionary for youtube-dl.
 
     """
+
+    """
+    https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#embedding-yt-dlp
+
+    For a list of options available, have a look at yt_dlp/YoutubeDL.py or help(yt_dlp.YoutubeDL) in a Python shell. If you are already familiar with the CLI, you can use devscripts/cli_to_api.py to translate any CLI switches to YoutubeDL params.
+    """
     return {
         "extract_flat": "discard_in_playlist",
         "final_ext": "m4a",
@@ -172,40 +168,6 @@ def ytdlp_gen_config(dl_path):
         ],
         "retries": 10,
     }
-
-
-def create_dir_if_not_exist(path):
-    """
-    Create a directory if it doesn't already exist.
-
-    Args:
-        path (str): The path of the directory to be created.
-
-    Returns:
-        None
-    """
-    # TODO path type check
-    if not os.path.exists(path):
-        # if playlist directory doesn't exist, create it
-        os.mkdir(path)
-
-
-def create_file_if_not_exist(path):
-    """
-    Create a file at the specified path if it doesn't already exist.
-
-    Args:
-        path (str): The path of the file to be created.
-
-    Returns:
-        None
-    """
-    # TODO path type check
-    if os.path.exists(path):
-        pass
-    else:
-        with open(path, "w", encoding="utf-8"):
-            pass
 
 
 def ytm_dl_song(url, ydl_opts):
