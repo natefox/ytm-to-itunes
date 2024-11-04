@@ -13,56 +13,82 @@ all songs in those playlists, and adds them to corresponding playlists
 in iTunes.
 """
 
-import subprocess
-import os
+import argparse
+import datetime
 import logging
-from tqdm import tqdm  # type: ignore
+import os
+import subprocess
+import sys
 
+import yt_dlp  # type: ignore
+from tqdm import tqdm  # type: ignore
 # https://ytmusicapi.readthedocs.io/en/stable/reference.html#ytmusicapi.YTMusic.get_library_playlists
 from ytmusicapi import YTMusic  # type: ignore
-import yt_dlp  # type: ignore
+
 from util import create_dir_if_not_exist, create_file_if_not_exist
-import datetime
+
+logger = logging.getLogger(__name__)
 
 
 # Set up logging
-logging_level = logging.DEBUG
+def set_logging(logging_level=logging.WARNING):
+    global logger
+    logging.basicConfig(level=logging_level)
 
-logging.basicConfig(level=logging_level)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging_level)
-# in order to not get 2 log messages:
-# Set the logger to not propagate messages:
-# logger.propagate = False.
-# This will prevent the logger from sending messages up to the root logger
-logger.propagate = False
+    logger.setLevel(logging_level)
+    # in order to not get 2 log messages:
+    # Set the logger to not propagate messages:
+    # logger.propagate = False.
+    # This will prevent the logger from sending messages up to the root logger
+    logger.propagate = False
 
-formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
 
-# Create a file handler
-log_file = (
-    "log" + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + ".log"
-)
-handler = logging.FileHandler(log_file)
-handler.setLevel(logging_level)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+    # Create a file handler
+    log_file = "log" + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + ".log"
+    handler = logging.FileHandler(log_file)
+    handler.setLevel(logging_level)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
-# Create a console handler
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging_level)
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
+    # Create a console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging_level)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
 
-oauth_path = input("Please enter the path to your oauth.json file: ")
-if not os.path.isfile(oauth_path):
-    print("File does not exist. Please try again.")
-else:
-    ytmusic = YTMusic(oauth_path)
-    # ytmusic = YTMusic("oauth.json")
+OAUTH_SEARCH_PATH = ["./oauth.json", os.environ["HOME"] + "/oauth.json"]
+
+
+def auth(arg_path=None):
+    global OAUTH_SEARCH_PATH
+    oauth_path = None
+
+    # cli flag has precedence over env var
+    if arg_path is not None:
+        oauth_path = arg_path
+    # envar has precedence over default paths
+    elif os.environ.get("OAUTH_FILE_PATH"):
+        path = os.environ.get("OAUTH_FILE_PATH")
+        if os.path.isfile(path):
+            oauth_path = path
+    # search some default places
+    else:
+        for path in OAUTH_SEARCH_PATH:
+            if os.path.isfile(path):
+                oauth_path = path
+                break
+
+    if oauth_path is None or not os.path.isfile(oauth_path):
+        print(
+            "Unable to find oauth.json file. Please first login with: ytmusicapi oauth"
+        )
+        sys.exit(1)
+    else:
+        return YTMusic(oauth_path)
 
 
 # TODO add badges
@@ -135,9 +161,7 @@ def itunes_get_plst_id(playlist_name):
     """
 
     playlist_id = (
-        subprocess.check_output(
-            ["osascript", "-e", scpt_get_plst_id(playlist_name)]
-        )
+        subprocess.check_output(["osascript", "-e", scpt_get_plst_id(playlist_name)])
         .decode("utf-8")
         .strip()
     )
@@ -250,23 +274,75 @@ def ytm_dl_song(url, ydl_opts):
         return os.path.abspath(filepath_local)
 
 
+def parse_args():
+    """
+    Parses the command line arguments and returns them as a dictionary.
+    """
+    parser = argparse.ArgumentParser(
+        description="Convert YouTube Music playlists to iTunes playlists"
+    )
+    parser.add_argument(
+        "-d",
+        "--debug",
+        help="Enable debug logging",
+        action="store_const",
+        dest="loglevel",
+        const=logging.DEBUG,
+        default=logging.WARNING,
+    )
+    parser.add_argument(
+        "-l",
+        "--list-playlist",
+        help="List playlists only and exit",
+        action="store_true",
+    )
+    parser.add_argument("-o", "--oauth-file", help="Path to oauth.json file")
+    parser.add_argument(
+        "-p", "--playlist", help="Download a specific playlist (by name)"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="Be verbose",
+        action="store_const",
+        dest="loglevel",
+        const=logging.INFO,
+    )
+
+    return parser.parse_args()
+
+
 def main():
     """
     Main function that performs the conversion of YouTube Music playlists
     to iTunes playlists.
     """
+    args = parse_args()
+    set_logging(args.loglevel)
+
+    ytmusic = auth(args.oauth_file)
 
     ytm_all_plsts = ytmusic.get_library_playlists()
-    for plst in tqdm(ytm_all_plsts):
+    if args.list_playlist:
+        # logger.debug(f"All yt playlists: {json.dumps(ytm_all_plsts, indent=4)}")
+        playlist_names = [p["title"] for p in ytm_all_plsts]
+
+        print("Available playlists:")
+        print("\n".join(sorted(playlist_names)))
+        return
+    ytm_all_plsts_tqdm = tqdm(ytm_all_plsts)
+    if args.playlist:
+        logger.debug("Isolating to a single playlist: %s", args.playlist)
+        ytm_all_plsts_tqdm = [
+            p for p in tqdm(ytm_all_plsts) if p["title"] == args.playlist
+        ]
+
+    for plst in ytm_all_plsts_tqdm:
         ytm_plst_name = plst["title"]
         ytm_plst_id = plst["playlistId"]
-        logger.debug(
-            "main: working with playlist: %s [%s]", ytm_plst_name, ytm_plst_id
-        )
+        logger.debug("main: working with playlist: %s [%s]", ytm_plst_name, ytm_plst_id)
 
-        ydl_opts = ytdlp_gen_config(
-            f"./result/{ytm_plst_id}/%(title)s.%(ext)s"
-        )
+        ydl_opts = ytdlp_gen_config(f"./result/{ytm_plst_id}/%(title)s.%(ext)s")
 
         try:
             # check if the playlist exists in apple music
@@ -311,9 +387,7 @@ def main():
                     # skip if empty track videoId
                     # TODO cron
                     # TODO windows port
-                    logger.error(
-                        "main: track [[[%s]]] has empty videoID", track
-                    )
+                    logger.error("main: track [[[%s]]] has empty videoID", track)
                     continue
 
                 if track["videoId"] in dl_text:
@@ -325,9 +399,7 @@ def main():
                     already_downloaded = True
 
                 if not already_downloaded:
-                    download_url = (
-                        f'https://www.youtube.com/watch?v={track["videoId"]}'
-                    )
+                    download_url = f'https://www.youtube.com/watch?v={track["videoId"]}'
                     try:
                         fp2 = ytm_dl_song(download_url, ydl_opts)
                         itunes_add(ytm_plst_name, fp2)

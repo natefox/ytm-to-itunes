@@ -4,12 +4,12 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-mypy = "*"
-pytest = "*"
-flake8 = "*"
-ytmusicapi = "*"
-yt-dlp = "*"
-tqdm = "*"
+mypy = ">=1"
+pytest = ">=8"
+flake8 = ">=7"
+ytmusicapi = ">=1"
+yt-dlp = ">=2024.10.22"
+tqdm = ">=4"
 
 [dev-packages]
 
